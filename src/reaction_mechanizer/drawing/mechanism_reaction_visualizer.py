@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from math import ceil
 from typing import Tuple
-from pathway.reaction import SimpleStep
+from reaction_mechanizer.pathway.reaction import ReactionMechanism, SimpleStep
 from scipy.integrate import odeint
 import numpy as np
 import matplotlib.pyplot as plt
@@ -16,20 +16,18 @@ class ReactionEvent(Enum):
     SMOOTH_CHANGE_CONCENTRATION = 2
 
 
-class SimpleStepVisualizer:
+class StepVisualizer:
 
-    def __init__(self, simple_step: SimpleStep):
-        self.simple_step: SimpleStep = simple_step
+    def __init__(self, simple_step: SimpleStep|ReactionMechanism):
+        self.simple_step: SimpleStep|ReactionMechanism = simple_step
 
     def get_states(self, initial_state: dict, time_end, number_steps, initial_time: int = 0, ode_override: dict = None):
-        print(initial_state)
         ode_dict = self.simple_step.get_differential_equations()
         ode_dict_temp = {key: ode_dict[key] for key in initial_state.keys()}
         ode_dict = ode_dict_temp
         if ode_override is not None:
             for key, ode in ode_override.items():
                 ode_dict[key] = ode
-        print(ode_dict)
         ode_function = _get_simple_step_ode_function(ode_dict, initial_state.keys())
 
         times = np.linspace(initial_time, time_end, number_steps)
@@ -83,6 +81,8 @@ class SimpleStepVisualizer:
             ax.legend()
             sns.despine(ax=ax)
             ax.margins(x=0, y=0)
+            _,top = ax.get_ylim()
+            ax.set_ylim([0,top*1.05])
             plt.savefig(str(out), bbox_inches="tight", dpi=600)
         return pd.DataFrame({thing: data[:, i] for i, thing in enumerate(initial_state.keys())})
 

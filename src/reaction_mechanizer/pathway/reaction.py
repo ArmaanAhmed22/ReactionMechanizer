@@ -78,7 +78,6 @@ class SimpleStep:
                 out_raw_str[thing] = f"lambda **kwargs: {coef}*{self.kf}*{reactant_multiplication} - {self.kr}*{coef}*{product_multiplication}"
                 out_ode[thing] = DifferentialEquationModel(f"{coef}*{self.kf}*{reactant_multiplication} - {self.kr}*{coef}*{product_multiplication}")
         for thing, raw_func in out_raw_str.items():
-            print(f"d{thing}/dt = {raw_func}")
             out[thing] = (eval(raw_func), raw_func)
         return out_ode
 
@@ -131,12 +130,6 @@ class ReactionMechanism:
             strictness (str, optional): Levels: "warning", "error". Defaults to "warning".
         """
         self.steps = steps
-        """if not (kind_mistakes:=self.mistakes(),)[0] is None:
-            match strictness:
-                case "warning":
-                    print("WARNING: mismatch of the following\n"+str(kind_mistakes))
-                case "error":
-                    raise self.MechanismException("ERROR: mismatch of the following\n"+str(kind_mistakes))"""
 
     @staticmethod
     def str_to_mechanism(str_mechanism: str, /, strictness: str = "warning"):
@@ -152,7 +145,6 @@ class ReactionMechanism:
         for step in self.steps:
             for key, ode in step.get_differential_equations().items():
                 if key in out:
-                    print("YES")
                     prev_ode = out[key]
 
                     out[key] = lambda **kwargs: prev_ode(**kwargs) + ode(**kwargs)
@@ -172,7 +164,6 @@ class ReactionMechanism:
 
         for key in out_ode_prev.keys():
             out_ode[key] = DifferentialEquationModel.sum_differential_equations(out_ode_prev[key])
-            print(out_ode[key].model_str)
         return out_ode
 
     def mistakes(self) -> Counter | None:
@@ -209,5 +200,4 @@ class DifferentialEquationModel:
 
     @staticmethod
     def sum_differential_equations(list_ode: list['DifferentialEquationModel']) -> 'DifferentialEquationModel':
-        print(list_ode)
         return DifferentialEquationModel('+'.join([ode.model_str for ode in list_ode]))
