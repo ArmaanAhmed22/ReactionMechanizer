@@ -16,7 +16,7 @@ A system of ODEs can be built for any step, and any full mechanism (a combinatio
 # Documentation
 To do
 # Requirements
-Reaction Mechanizer requires Python 3.10 in addition to the following libraries:
+Reaction Mechanizer requires Python 3.9 in addition to the following libraries:
 - matplotlib
 - seaborn
 - scipy
@@ -27,8 +27,8 @@ Specific version requirements are in `requirements.txt`
 # Installation
 This version is a pre-release, so Reaction Mechanizer can only be manually installed from source.
 
-```
-git clone https://github.com/ArmaanAhmed22/ReactionMechanizer.git & cd ReactionMechanizer & pip install .
+```bash
+git clone https://github.com/ArmaanAhmed22/ReactionMechanizer.git && cd ReactionMechanizer && pip install .
 ```
 # Usage
 Reaction Mechanizer can either simulate a `SimpleStep` or a `ReactionMechanism`. Either can be created from a string:
