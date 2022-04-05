@@ -12,7 +12,7 @@ Without loss of generality, if we focus solely on species `C`, notice that the r
 
 ```dC/dt=k1*A*B - k2*C*D```
 
-A system of ODEs can be built for any step, and in fact any full mechanism (a combination of steps).
+A system of ODEs can be built for any step, and any full mechanism (a combination of steps).
 # Documentation
 To do
 # Requirements

@@ -1,11 +1,56 @@
-from reaction_mechanizer.pathway.reaction import *
-from reaction_mechanizer.drawing.mechanism_reaction_visualizer import *
+from reaction_mechanizer.pathway.reaction import DifferentialEquationModel, SimpleStep
+from reaction_mechanizer.drawing.mechanism_reaction_visualizer import ReactionMechanism
+import pytest
 
-reac = ReactionMechanism.str_to_mechanism(
-"""S+E->C
-C->E+P""")
 
-reac.set_rate_constants([{"kf":0.1,"kr":0},{"kf":0.05}])
+@pytest.mark.parametrize("string_input, expected", [
+    ("A+B->C+D", SimpleStep({"A": 1, "B": 1}, {"C": 1, "D": 1})),
+    ("A +B -> C+      D", SimpleStep({"A": 1, "B": 1}, {"C": 1, "D": 1})),
+    ("1/2A+3B->C+5/6D", SimpleStep({"A": 1/2, "B": 3}, {"C": 1, "D": 5/6})),
+    ("1/2A+ 3B->C+  3/800D", SimpleStep({"A": 1/2, "B": 3}, {"C": 1, "D": 3/800}))
+])
+def test_str_to_step(string_input, expected):
+    assert SimpleStep.str_to_step(string_input) == expected
 
-vis = SimpleStepVisualizer(reac)
-vis.progress_reaction({"S": 1, "E": 2,"C":0,"P":0}, 1000, 5000,events=[(200, ReactionEvent.CHANGE_CONCENTRATION, ("S", 0))],out = "out.png")
+
+@pytest.mark.parametrize("string_input, expected", [
+    (
+        """A->X
+        X->C""", ReactionMechanism(
+            [SimpleStep({"A": 1}, {"X": 1}),
+             SimpleStep({"X": 1}, {"C": 1})]
+        )
+    ),
+    (
+        """A -> X
+        X-> 1/5C""", ReactionMechanism(
+            [SimpleStep({"A": 1}, {"X": 1}),
+             SimpleStep({"X": 1}, {"C": 1/5})]
+        )
+    ),
+    (
+        """A+B+C->X
+        X->C
+        C->D+E""", ReactionMechanism(
+            [SimpleStep({"A": 1, "B": 1, "C": 1}, {"X": 1}),
+             SimpleStep({"X": 1}, {"C": 1}),
+             SimpleStep({"C": 1}, {"D": 1, "E": 1})]
+        )
+    )
+])
+def test_str_to_mechanism(string_input, expected):
+    assert ReactionMechanism.str_to_mechanism(string_input) == expected
+
+
+@pytest.mark.parametrize("rate_of, k_values, coordinates, input_step, ode_expected_lambda", [
+    ("A", (kf := 1, kr := 1), [{"A": 1, "B": 1, "C": 1, "D": 1}, {"A": 2, "B": 2, "C": 2, "D": 1}], "A+B->C+D", lambda A, B, C, D: -kf*A*B + kr*C*D),
+    ("D", (kf := 1, kr := 1), [{"A": 1, "B": 1, "C": 1, "D": 1}, {"A": 2, "B": 2, "C": 2, "D": 1}], "A+B->C+D", lambda A, B, C, D: kf*A*B - kr*C*D)
+])
+def test_differential_equations_step(rate_of: str, k_values: tuple, coordinates: list[dict], input_step: str, ode_expected_lambda):
+    matchting_rates = []
+    step = SimpleStep.str_to_step(input_step)
+    step.set_rate_constant(kf=k_values[0], kr=k_values[1])
+    ode_input: DifferentialEquationModel = step.get_differential_equation_of(rate_of)
+    for coord in coordinates:
+        matchting_rates.append(ode_input.get_lambda()(**coord) == ode_expected_lambda(**coord))
+    assert sum(matchting_rates) == len(coordinates)
