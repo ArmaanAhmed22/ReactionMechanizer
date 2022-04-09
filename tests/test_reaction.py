@@ -54,3 +54,10 @@ def test_differential_equations_step(rate_of: str, k_values: tuple, coordinates:
     for coord in coordinates:
         matchting_rates.append(ode_input.get_lambda()(**coord) == ode_expected_lambda(**coord))
     assert sum(matchting_rates) == len(coordinates)
+
+
+@pytest.mark.parametrize("simple_step, expected", [
+    (SimpleStep({"A": 1, "B": 2}, {"C": 1, "D": 3}), "1A + 2B -> 1C + 3D")
+])
+def test_str_simple_step(simple_step: SimpleStep, expected: str):
+    assert str(simple_step) == expected
