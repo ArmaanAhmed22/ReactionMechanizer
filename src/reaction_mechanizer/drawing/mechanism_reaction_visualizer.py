@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Any, Tuple, Union
+from typing import Any, Dict, List, Tuple, Union
 import typing
 from reaction_mechanizer.pathway.reaction import DifferentialEquationModel, ReactionMechanism, SimpleStep
 from scipy.integrate import odeint
@@ -10,23 +10,50 @@ import pandas as pd
 
 
 class ReactionEvent(Enum):
+    """Enum for the possible reaction events, such as:\n
+    CHANGE_CONCENTRATION: how much the concentration of the species should be changed by.
+        Additional Info: Tuple(str: species of interest, float: change in concentration)
+    SET_CONCENTRATION: what to set the concentration of the species to.
+        Additional Info: Tuple(str: species of interest, float: new concentration)
+    SMOOTH_CHANGE_CONCENTRATION: TBD
+    """
     CHANGE_CONCENTRATION = 0
     SET_CONCENTRATION = 1
     SMOOTH_CHANGE_CONCENTRATION = 2
 
 
-class StepVisualizer:
+class ReactionVisualizer:
+    """Visualier for either `SimpleStep` or `ReactionMechanism`
+    """
+    def __init__(self, reaction: Union[SimpleStep, ReactionMechanism]):
+        """Create a `ReactionVisualizer` object to model the progression of a reaction
 
-    def __init__(self, simple_step: Union[SimpleStep, ReactionMechanism]):
-        self.simple_step: Union[SimpleStep, ReactionMechanism] = simple_step
+        Args:
+            reaction (Union[SimpleStep, ReactionMechanism]): The reaction object to model
+        """
+        self.reaction: Union[SimpleStep, ReactionMechanism] = reaction
 
     def get_states(self,
-                   initial_state: dict[str, float],
+                   initial_state: Dict[str, float],
                    time_end: float,
                    number_steps: int,
                    initial_time: float = 0,
-                   ode_override: Union[dict[str, DifferentialEquationModel], None] = None) -> np.ndarray[Any, Any]:
-        ode_dict: dict[str, DifferentialEquationModel] = self.simple_step.get_differential_equations()
+                   ode_override: Union[Dict[str, DifferentialEquationModel], None] = None) -> np.ndarray[Any, Any]:
+        """Get concentration of the species in this reaction, with model specifications given.
+
+        Args:
+            initial_state (Dict[str, float]): initial concentration of all species in reaction
+            time_end (float): The end time for this model
+            number_steps (int): The granularity of this model. The higher the number of steps, the more accurate the model.
+            initial_time (float, optional): The time to start the model at. Defaults to 0.
+            ode_override (Union[Dict[str, DifferentialEquationModel], None], optional): \
+                Dictionary containing the species to override the differential equation of using the provided one. Defaults to None.
+
+        Returns:
+            np.ndarray[Any, Any]: 2D array where the rows represent the concentrations of the species at different times \
+                (between `initial_time` and `end_time` and using `number_steps`). The columns are the species in the order given by `initial_state`
+        """
+        ode_dict: dict[str, DifferentialEquationModel] = self.reaction.get_differential_equations()
         ode_dict_temp = {key: ode_dict[key] for key in initial_state.keys()}
         ode_dict = ode_dict_temp
         if ode_override is not None:
@@ -41,10 +68,28 @@ class StepVisualizer:
         return typing.cast(np.ndarray[Any, Any], odeint(ode_function, cur_state, times))
 
     def progress_reaction(self,
-                          initial_state: dict[str, float],
-                          time_end: float, number_steps: int,
-                          events: Union[list[Tuple[float, ReactionEvent, Tuple[Any]]], None] = None,
-                          out: Union[str, None] = None):
+                          initial_state: Dict[str, float],
+                          time_end: float,
+                          number_steps: int,
+                          events: Union[List[Tuple[float, ReactionEvent, Tuple[Any]]], None] = None,
+                          out: Union[str, None] = None) -> pd.DataFrame:
+        """Generate model for reaction
+
+        Args:
+            initial_state (Dict[str, float]): initial concentration of all species in reaction
+            time_end (float): The end time for this model
+            number_steps (int): The granularity of this model. The higher the number of steps, the more accurate the model.
+            events (Union[list[Tuple[float, ReactionEvent, Tuple[Any]]], None], optional): \
+                The list of events to occur during a specified time in the reaction. \
+                    A single event is represented by a tuple holding the time of the perturbation, the type of perturbation (`ReactionEvent`), \
+                        and the additional information associated with the `ReactionEvent` selected. Defaults to None.
+            out (Union[str, None], optional): \
+                If a string is added, a png visually representing the reaction is created at the specified location (and a `DataFrame` is returned). \
+                    Otherwise, just the `DataFrame` is returned. Defaults to None.
+
+        Returns:
+            pd.DataFrame: DataFrame representing the concentrations of the species in the reaction
+        """
         data: np.ndarray[Any, Any] = np.ndarray((0, 0))
         if events is not None:
             sorted_events = (*sorted(events, key=lambda x: x[0]), (time_end, None, tuple()))

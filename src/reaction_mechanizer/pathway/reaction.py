@@ -1,12 +1,19 @@
 from types import LambdaType
-from typing import Any, Dict, Union
+from typing import Any, Dict, List, Union
 import re
 import typing
 
 
 class SimpleStep:
-
+    """SimpleStep represents a single step in a mechanism. For example, it can model aA+bB->cC+dD using a K constant or kf and kr rate constants
+    """
     def __init__(self, reactants: Dict[str, float], products: Dict[str, float]):
+        """Create a SimpleStep object
+
+        Args:
+            reactants (Dict[str, float]): List of reactants in the following form: {"A":a,"B":b}. To represent fractional coefficients, `a` and `b` are floats
+            products (Dict[str, float]): List of products in the following form: {"A":a,"B":b}. To represent fractional coefficients, `a` and `b` are floats
+        """
         self.liquid_solid_reactants: Dict[str, float] = {}
         self.reactants: Dict[str, float] = {}
         for thing, coef in reactants.items():
@@ -34,6 +41,19 @@ class SimpleStep:
 
     @staticmethod
     def str_to_step(str_step: str, _optional_flag: Any = None) -> 'SimpleStep':
+        """Turns a string representation of a reaction to a `SimpleStep` representation of that reaction.
+
+        Args:
+            str_step (str): \
+                The string representation of the reaction of the form: "aA + bB -> cC + dD". `a`, `b`, `c`, and `d` are coefficents \
+                    (if one is fractional, use fraction notation rather than decimal notation ["1/2" GOOD, "0.5" BAD]). \
+                        "->" separates reactants and products, and "A", "B", "C", "D" are names of the species involved in the reaction \
+                            (they shouldn't contain any special characters)
+            _optional_flag (Any, optional): Dummy flag used internally to transfer information during recursive steps.
+
+        Returns:
+            SimpleStep: SimpleStep representation of `str_step`. `self.kf` and `self.kr` are set to 0
+        """
         if "->" in str_step:
             str_step = str_step.replace("\t", "").replace(" ", "")
             reac_str, prod_str = str_step.split("->")
@@ -57,10 +77,22 @@ class SimpleStep:
             return SimpleStep({}, {str_step[cutoff:]: coef})
 
     def set_rate_constant(self, kf: float = 0, kr: float = 0) -> None:
+        """Set the rate constants for `self.kf` and `self.kr`
+
+        Args:
+            kf (float, optional): The kf. Defaults to 0.
+            kr (float, optional): The kr. Defaults to 0.
+        """
         self.kf = kf
         self.kr = kr
 
-    def get_differential_equations(self) -> dict[str, 'DifferentialEquationModel']:
+    def get_differential_equations(self) -> Dict[str, 'DifferentialEquationModel']:
+        """Get system of first order differential equations model for the progression of this step.
+
+        Returns:
+            Dict[str, DifferentialEquationModel]: \
+                Get dictionary consisting of all the species in this step as keys and all the corresponding differential equation models as values.
+        """
         arguments: str = ",".join(self.reactants.keys())
         products = [thing for thing in self.products.keys() if thing not in self.reactants.keys()]
         if len(products) != 0:
@@ -88,26 +120,40 @@ class SimpleStep:
             out[thing] = (eval(raw_func), raw_func)
         return out_ode
 
-    def get_differential_equation_of(self, thing: str) -> 'DifferentialEquationModel':
+    def get_differential_equation_of(self, species: str) -> 'DifferentialEquationModel':
+        """Get a differential equation for just a single `species` in this step.
+
+        Args:
+            species (str): The species to get the differential equation of
+
+        Returns:
+            DifferentialEquationModel: The differential equation model of the `species`
+        """
         arguments: str = ",".join(self.reactants.keys())
-        products = [thing for thing in self.products.keys() if thing not in self.reactants.keys()]
+        products = [species for species in self.products.keys() if species not in self.reactants.keys()]
         if len(products) != 0:
             arguments += ","+",".join(products)
-        reactant_multiplication: str = "*".join([f"""kwargs["{thing}"]**{coef}""" for thing, coef in self.reactants.items()])
-        product_multiplication: str = "*".join([f"""kwargs["{thing}"]**{coef}""" for thing, coef in self.products.items()])
+        reactant_multiplication: str = "*".join([f"""kwargs["{species}"]**{coef}""" for species, coef in self.reactants.items()])
+        product_multiplication: str = "*".join([f"""kwargs["{species}"]**{coef}""" for species, coef in self.products.items()])
 
         ode = DifferentialEquationModel("")
-        if thing in self.reactants:
-            coef_reactant = self.reactants[thing]
+        if species in self.reactants:
+            coef_reactant = self.reactants[species]
             ode = DifferentialEquationModel.sum_differential_equations(
                 [ode, DifferentialEquationModel(f"-{coef_reactant}*{self.kf}*{reactant_multiplication} + {coef_reactant}*{self.kr}*{product_multiplication}")])
-        if thing in self.products:
-            coef_product = self.products[thing]
+        if species in self.products:
+            coef_product = self.products[species]
             new_ode = DifferentialEquationModel(f'{coef_product}*{self.kf}*{reactant_multiplication} - {self.kr}*{coef_product}*{product_multiplication}')
             ode = DifferentialEquationModel.sum_differential_equations([ode, new_ode])
         return ode
 
-    def set_rate_constant_from_K(self, K, normalizing_kr=1) -> None:
+    def set_rate_constant_from_K(self, K: float, normalizing_kr=1) -> None:
+        """Set reaction rate using K-value normalized to a certain kr (default is 1). K is mathematically equivalent to kf/kr
+
+        Args:
+            K (float): The K-value
+            normalizing_kr (int, optional): _description_. Defaults to 1.
+        """
         self.kr = normalizing_kr
         self.kf = self.kr * K
 
@@ -120,12 +166,25 @@ class SimpleStep:
             return self
         return self.__add__(typing.cast('SimpleStep', other))
 
-    def __str__(self):
+    def __str__(self) -> str:
+        """String representation of this `SimpleStep`. Uses the following format: "aA + bB -> cC + dD"
+
+        Returns:
+            str: string version
+        """
         reactants: str = " + ".join([str(coef) + thing for thing, coef in self.reactants.items()])
         products: str = " + ".join([str(coef) + thing for thing, coef in self.products.items()])
         return reactants + " -> " + products
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
+        """Check equality between two `SimpleStep`s. Equality is when the species and corresponding coefficients are the same among both objects.
+
+        Args:
+            other (Any): Other object.
+
+        Returns:
+            bool: whether the two objects are equal or not.
+        """
         if isinstance(other, self.__class__):
             return self.reactants == other.reactants and self.products == other.products
         else:
@@ -133,31 +192,50 @@ class SimpleStep:
 
 
 class ReactionMechanism:
+    """`ReactionMechanism` is a series of `SimpleStep`s that is analogous to a chemical mechanism behind a reaction.
+    """
 
     class MechanismException(Exception):
         pass
 
-    def __init__(self, steps: list[SimpleStep], strictness: str = "warning"):
-        """_summary_
+    def __init__(self, steps: list[SimpleStep]):
+        """Create a ReactionMechanism object
 
         Args:
-            steps (list[SimpleStep]): _description_
-            strictness (str, optional): Levels: "warning", "error". Defaults to "warning".
+            steps (list[SimpleStep]): list of simple steps to conjoin into a `ReactionMechanism`
         """
         self.steps = steps
 
     @staticmethod
-    def str_to_mechanism(str_mechanism: str, /, strictness: str = "warning"):
+    def str_to_mechanism(str_mechanism: str) -> 'ReactionMechanism':
+        """Create `ReactionMechanism` from string representation of mechanism
+
+        Args:
+            str_mechanism (str): String mechanism. It is a list of `SimpleStep`s (following their string syntax), and each `SimpleStep` is separated by `\\n`
+
+        Returns:
+            ReactionMechanism: Resultant `ReactionMechanism`
+        """
         steps = [SimpleStep.str_to_step(str_step) for str_step in str_mechanism.split("\n")]
         return ReactionMechanism(steps)
 
-    def set_rate_constants(self, rates: list[dict[str, float]]):
+    def set_rate_constants(self, rates: List[Dict[str, float]]):
+        """Set the `self.kf` and `self.kr` values for all the simple steps in this mechanism.
+
+        Args:
+            rates (List[Dict[str, float]]): Ordinal list of dictionaries containing entries for either kf, kr, both, or none.
+        """
         for new_rate, step in zip(rates, self.steps):
             step.set_rate_constant(**new_rate)
 
-    def get_differential_equations(self) -> dict[str, 'DifferentialEquationModel']:
-        out_ode_prev: dict[str, list['DifferentialEquationModel']] = {}
-        out_ode: dict[str, 'DifferentialEquationModel'] = {}
+    def get_differential_equations(self) -> Dict[str, 'DifferentialEquationModel']:
+        """Get the set of `DifferentialEquationModel` representation of this mechanism
+
+        Returns:
+            Dict[str, DifferentialEquationModel]: Dictionary whose entries represent the differential equation model of each of the species in the mechanism.
+        """
+        out_ode_prev: Dict[str, List['DifferentialEquationModel']] = {}
+        out_ode: Dict[str, 'DifferentialEquationModel'] = {}
         for step in self.steps:
             for key, ode in step.get_differential_equations().items():
                 if key in out_ode_prev:
@@ -183,7 +261,7 @@ class ReactionMechanism:
 
 class DifferentialEquationModel:
     def __init__(self, model_str: str):
-        """Create a first order Differential Equation representation
+        """Create an object representing a first order differential equation. It may contain multiple dependent variables.
 
         Args:
             model_str (str): Should involve all the variables using "kwargs['var']".
@@ -191,8 +269,21 @@ class DifferentialEquationModel:
         self.model_str = model_str
 
     def get_lambda(self) -> LambdaType:
+        """Get the lambda version of this `DifferentialEquationModel`. Use keyword arguments to specify variable values.
+
+        Returns:
+            LambdaType: Lambda version of this `DifferentialEquationModel`
+        """
         return typing.cast(LambdaType, eval(f"lambda **kwargs: {self.model_str}"))
 
     @staticmethod
     def sum_differential_equations(list_ode: list['DifferentialEquationModel']) -> 'DifferentialEquationModel':
+        """Sum together the differential equations in the list
+
+        Args:
+            list_ode (list[DifferentialEquationModel]): List of `DifferentialEquationModel`s
+
+        Returns:
+            DifferentialEquationModel: The resultant differential equation
+        """
         return DifferentialEquationModel('+'.join([ode.model_str for ode in list_ode]))
