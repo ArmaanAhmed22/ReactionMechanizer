@@ -1,6 +1,6 @@
 import pytest
 from reaction_mechanizer.pathway.reaction import ReactionMechanism, SimpleStep
-from reaction_mechanizer.drawing.mechanism_reaction_visualizer import StepVisualizer
+from reaction_mechanizer.drawing.mechanism_reaction_visualizer import ReactionVisualizer
 
 epsilon = 0.001
 end_time = 1000
@@ -13,7 +13,7 @@ granularity = 1000
 ])
 def test_equilibrium_step(k_values: tuple, eq_step: SimpleStep, initial_conditions: list[dict], expected_K: float):
     eq_step.set_rate_constant(kf=k_values[0], kr=k_values[1])
-    vis = StepVisualizer(eq_step)
+    vis = ReactionVisualizer(eq_step)
     K_error_list = []
     for initial_condition in initial_conditions:
         df = vis.progress_reaction(initial_condition, end_time, granularity)
@@ -59,6 +59,6 @@ def test_equilibrium_step(k_values: tuple, eq_step: SimpleStep, initial_conditio
 ])
 def test_mechanism(k_values_list: list[dict], mechanism: ReactionMechanism, initial_condition: dict, species_of_importance: str, expected_concentration):
     mechanism.set_rate_constants(k_values_list)
-    vis = StepVisualizer(mechanism)
+    vis = ReactionVisualizer(mechanism)
     df = vis.progress_reaction(initial_condition, end_time, granularity)
     assert abs(df.iloc[-1][species_of_importance] - expected_concentration) <= epsilon
