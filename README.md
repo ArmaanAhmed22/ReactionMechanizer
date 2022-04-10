@@ -54,11 +54,11 @@ Z+Y->B"""
 )
 ```
 
-From an initial state, the step/mechanism progression can be seen using the `StepVisualizer` class as follows:
+From an initial state, the step/mechanism progression can be seen using the `ReactionVisualizer` class as follows:
 
 ```python
-from reaction_mechanism.drawing.mechanism_reaction_visualizer import StepVisualizer, ReactionEvent
-vis = StepVisualizer(rm)  #or StepVisualizer(ss)
+from reaction_mechanism.drawing.mechanism_reaction_visualizer import ReactionVisualizer, ReactionEvent
+vis = ReactionVisualizer(rm)  #or ReactionVisualizer(ss)
 dataframe = vis.progress_reaction({"A": 1, "X": 0, "Y":0, "Z": 0, "B":0.1}, 1000, 5000, events=[(200, ReactionEvent.CHANGE_CONCENTRATION, ("A", 1))], out = "out.png")
 """Arguments:
 1) initial state of species
