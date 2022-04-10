@@ -38,7 +38,7 @@ class ReactionVisualizer:
                    time_end: float,
                    number_steps: int,
                    initial_time: float = 0,
-                   ode_override: Union[Dict[str, DifferentialEquationModel], None] = None) -> np.ndarray[Any, Any]:
+                   ode_override: Union[Dict[str, DifferentialEquationModel], None] = None) -> Any:
         """Get concentration of the species in this reaction, with model specifications given.
 
         Args:
@@ -50,10 +50,10 @@ class ReactionVisualizer:
                 Dictionary containing the species to override the differential equation of using the provided one. Defaults to None.
 
         Returns:
-            np.ndarray[Any, Any]: 2D array where the rows represent the concentrations of the species at different times \
+            Any: 2D array where the rows represent the concentrations of the species at different times \
                 (between `initial_time` and `end_time` and using `number_steps`). The columns are the species in the order given by `initial_state`
         """
-        ode_dict: dict[str, DifferentialEquationModel] = self.reaction.get_differential_equations()
+        ode_dict: Dict[str, DifferentialEquationModel] = self.reaction.get_differential_equations()
         ode_dict_temp = {key: ode_dict[key] for key in initial_state.keys()}
         ode_dict = ode_dict_temp
         if ode_override is not None:
@@ -65,7 +65,7 @@ class ReactionVisualizer:
 
         cur_state = list(initial_state.values())
 
-        return typing.cast(np.ndarray[Any, Any], odeint(ode_function, cur_state, times))
+        return odeint(ode_function, cur_state, times)
 
     def progress_reaction(self,
                           initial_state: Dict[str, float],
@@ -79,7 +79,7 @@ class ReactionVisualizer:
             initial_state (Dict[str, float]): initial concentration of all species in reaction
             time_end (float): The end time for this model
             number_steps (int): The granularity of this model. The higher the number of steps, the more accurate the model.
-            events (Union[list[Tuple[float, ReactionEvent, Tuple[Any]]], None], optional): \
+            events (Union[List[Tuple[float, ReactionEvent, Tuple[Any]]], None], optional): \
                 The list of events to occur during a specified time in the reaction. \
                     A single event is represented by a tuple holding the time of the perturbation, the type of perturbation (`ReactionEvent`), \
                         and the additional information associated with the `ReactionEvent` selected. Defaults to None.
@@ -90,7 +90,7 @@ class ReactionVisualizer:
         Returns:
             pd.DataFrame: DataFrame representing the concentrations of the species in the reaction
         """
-        data: np.ndarray[Any, Any] = np.ndarray((0, 0))
+        data: Any = np.ndarray((0, 0))
         if events is not None:
             sorted_events = (*sorted(events, key=lambda x: x[0]), (time_end, None, tuple()))
             cur_state = dict(initial_state)
@@ -103,8 +103,8 @@ class ReactionVisualizer:
 
                 cur_number_steps = round((time_point - prev_time_point_discretized) / time_end * number_steps)
 
-                cur_data: np.ndarray[Any, Any] = self.get_states(cur_state, time_point, cur_number_steps, initial_time=prev_time_point_discretized)
-                data = cur_data if len(data) == 0 else typing.cast(np.ndarray[Any, Any], np.concatenate([data, cur_data]))
+                cur_data = self.get_states(cur_state, time_point, cur_number_steps, initial_time=prev_time_point_discretized)
+                data = cur_data if len(data) == 0 else typing.cast(Any, np.concatenate([data, cur_data]))
 
                 if reaction_event_type == ReactionEvent.CHANGE_CONCENTRATION:
                     for index, key in enumerate(cur_state.keys()):
@@ -139,7 +139,7 @@ class ReactionVisualizer:
         return pd.DataFrame({thing: data[:, i] for i, thing in enumerate(initial_state.keys())})
 
 
-def _get_simple_step_ode_function(differential_equations: dict[str, DifferentialEquationModel], state_order: list[str]):
+def _get_simple_step_ode_function(differential_equations: Dict[str, DifferentialEquationModel], state_order: List[str]):
     active_odes = {key: val.get_lambda() for key, val in differential_equations.items()}
 
     def simple_step_ode_function(cur_state, t):

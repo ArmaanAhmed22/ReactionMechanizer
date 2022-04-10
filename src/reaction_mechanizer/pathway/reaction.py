@@ -66,7 +66,7 @@ class SimpleStep:
         cutoff: int = match.span()[1] if match is not None else (1, str_step := "1"+str_step)[0]
 
         if "/" in str_step:
-            parts: list[str] = str_step[:cutoff].split("/")
+            parts: List[str] = str_step[:cutoff].split("/")
             coef = int(parts[0]) / int(parts[1])
         else:
             coef = int(str_step[:cutoff])
@@ -198,11 +198,11 @@ class ReactionMechanism:
     class MechanismException(Exception):
         pass
 
-    def __init__(self, steps: list[SimpleStep]):
+    def __init__(self, steps: List[SimpleStep]):
         """Create a ReactionMechanism object
 
         Args:
-            steps (list[SimpleStep]): list of simple steps to conjoin into a `ReactionMechanism`
+            steps (List[SimpleStep]): list of simple steps to conjoin into a `ReactionMechanism`
         """
         self.steps = steps
 
@@ -277,11 +277,11 @@ class DifferentialEquationModel:
         return typing.cast(LambdaType, eval(f"lambda **kwargs: {self.model_str}"))
 
     @staticmethod
-    def sum_differential_equations(list_ode: list['DifferentialEquationModel']) -> 'DifferentialEquationModel':
+    def sum_differential_equations(list_ode: List['DifferentialEquationModel']) -> 'DifferentialEquationModel':
         """Sum together the differential equations in the list
 
         Args:
-            list_ode (list[DifferentialEquationModel]): List of `DifferentialEquationModel`s
+            list_ode (List[DifferentialEquationModel]): List of `DifferentialEquationModel`s
 
         Returns:
             DifferentialEquationModel: The resultant differential equation
