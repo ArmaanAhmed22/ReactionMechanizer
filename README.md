@@ -5,7 +5,14 @@
 ![Tests](https://github.com/ArmaanAhmed22/ReactionMechanizer/actions/workflows/tests.yml/badge.svg)
 
 Reaction Mechanizer is a Python tool that can be used to simulate chemical reactions.
-# Theory
+
+# Table of Contents
+1. [Theory](#theory)
+2. [Documentation](#documentation)
+3. [Requirements](#requirements)
+4. [Installation](#installation)
+5. [Usage](#usage)
+# Theory <a id="theory"></a>
 The rates at which steps in a reaction occur are governed by differential equations. For example, consider the equilibrium step:
 
 ```A+B<--->C+D```
@@ -15,10 +22,10 @@ Without loss of generality, if we focus solely on species `C`, notice that the r
 ```dC/dt=k1*A*B - k2*C*D```
 
 A system of ODEs can be built for any step, and any full mechanism (a combination of steps).
-# Documentation
-To do
-# Requirements
-Reaction Mechanizer requires Python 3.9 in addition to the following libraries:
+# Documentation <a id="documentation"></a>
+Compiled documentation for this whole package is hosted [here](https://armaanahmed22.github.io/ReactionMechanizer/).
+# Requirements <a id="requirements"></a>
+Reaction Mechanizer requires Python 3.8 in addition to the following libraries:
 - matplotlib
 - seaborn
 - scipy
@@ -26,13 +33,13 @@ Reaction Mechanizer requires Python 3.9 in addition to the following libraries:
 - numpy
 
 Specific version requirements are in `requirements.txt`
-# Installation
+# Installation <a id="installation"></a>
 This version is a pre-release, so Reaction Mechanizer can only be manually installed from source.
 
 ```bash
 git clone https://github.com/ArmaanAhmed22/ReactionMechanizer.git && cd ReactionMechanizer && pip install .
 ```
-# Usage
+# Usage <a id="usage"></a>
 Reaction Mechanizer can either simulate a `SimpleStep` or a `ReactionMechanism`. Either can be created from a string:
 
 ```python
