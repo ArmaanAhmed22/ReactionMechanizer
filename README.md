@@ -2,6 +2,8 @@
 
 ---
 # Reaction Mechanizer
+![Tests](https://github.com/ArmaanAhmed22/ReactionMechanizer/actions/workflows/tests.yml/badge.svg)
+
 Reaction Mechanizer is a Python tool that can be used to simulate chemical reactions.
 # Theory
 The rates at which steps in a reaction occur are governed by differential equations. For example, consider the equilibrium step:
