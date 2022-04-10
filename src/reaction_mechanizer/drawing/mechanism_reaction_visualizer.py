@@ -1,3 +1,5 @@
+"""Contains tools to visualize a reaction.
+"""
 from enum import Enum
 from typing import Any, Dict, List, Tuple, Union
 import typing

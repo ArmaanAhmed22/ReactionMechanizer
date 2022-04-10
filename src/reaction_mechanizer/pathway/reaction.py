@@ -1,3 +1,5 @@
+"""Contains tools to model a single step or a whole mechanism for a reaction.
+"""
 from types import LambdaType
 from typing import Any, Dict, List, Union
 import re
