@@ -1,3 +1,4 @@
+from typing import Dict, List
 from reaction_mechanizer.pathway.reaction import DifferentialEquationModel, SimpleStep
 from reaction_mechanizer.drawing.mechanism_reaction_visualizer import ReactionMechanism
 import pytest
@@ -46,7 +47,7 @@ def test_str_to_mechanism(string_input, expected):
     ("A", (kf := 1, kr := 1), [{"A": 1, "B": 1, "C": 1, "D": 1}, {"A": 2, "B": 2, "C": 2, "D": 1}], "A+B->C+D", lambda A, B, C, D: -kf*A*B + kr*C*D),
     ("D", (kf := 1, kr := 1), [{"A": 1, "B": 1, "C": 1, "D": 1}, {"A": 2, "B": 2, "C": 2, "D": 1}], "A+B->C+D", lambda A, B, C, D: kf*A*B - kr*C*D)
 ])
-def test_differential_equations_step(rate_of: str, k_values: tuple, coordinates: list[dict], input_step: str, ode_expected_lambda):
+def test_differential_equations_step(rate_of: str, k_values: tuple, coordinates: List[Dict[str, float]], input_step: str, ode_expected_lambda):
     matchting_rates = []
     step = SimpleStep.str_to_step(input_step)
     step.set_rate_constant(kf=k_values[0], kr=k_values[1])

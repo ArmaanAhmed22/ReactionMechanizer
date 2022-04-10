@@ -1,3 +1,4 @@
+from typing import Dict, List
 import pytest
 from reaction_mechanizer.pathway.reaction import ReactionMechanism, SimpleStep
 from reaction_mechanizer.drawing.mechanism_reaction_visualizer import ReactionVisualizer
@@ -11,7 +12,7 @@ granularity = 1000
     ((kf := 1, kr := 1), SimpleStep.str_to_step("A + B -> C"), [{"A": 100, "B": 200, "C": 0}, {"A": 100, "B": 200, "C": 300}], kf/kr),
     ((kf := 2, kr := 0.25), SimpleStep.str_to_step("A + B -> C"), [{"A": 100, "B": 2, "C": 0}, {"A": 100, "B": 200, "C": 3000}], kf/kr)
 ])
-def test_equilibrium_step(k_values: tuple, eq_step: SimpleStep, initial_conditions: list[dict], expected_K: float):
+def test_equilibrium_step(k_values: tuple, eq_step: SimpleStep, initial_conditions: List[Dict[str, float]], expected_K: float):
     eq_step.set_rate_constant(kf=k_values[0], kr=k_values[1])
     vis = ReactionVisualizer(eq_step)
     K_error_list = []
@@ -57,7 +58,12 @@ def test_equilibrium_step(k_values: tuple, eq_step: SimpleStep, initial_conditio
         2.5
      ),
 ])
-def test_mechanism(k_values_list: list[dict], mechanism: ReactionMechanism, initial_condition: dict, species_of_importance: str, expected_concentration):
+def test_mechanism(
+        k_values_list: List[Dict[str, float]],
+        mechanism: ReactionMechanism,
+        initial_condition: Dict[str, float],
+        species_of_importance: str,
+        expected_concentration):
     mechanism.set_rate_constants(k_values_list)
     vis = ReactionVisualizer(mechanism)
     df = vis.progress_reaction(initial_condition, end_time, granularity)
