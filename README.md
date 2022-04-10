@@ -34,11 +34,18 @@ Reaction Mechanizer requires Python 3.8 in addition to the following libraries:
 
 Specific version requirements are in `requirements.txt`
 # Installation <a id="installation"></a>
-This version is a pre-release, so Reaction Mechanizer can only be manually installed from source.
+The latest version can be manually installed from source.
 
 ```bash
 git clone https://github.com/ArmaanAhmed22/ReactionMechanizer.git && cd ReactionMechanizer && pip install .
 ```
+
+Or, the current release can be installed from PyPi:
+
+```bash
+pip install ReactionMechanizer
+```
+
 # Usage <a id="usage"></a>
 Reaction Mechanizer can either simulate a `SimpleStep` or a `ReactionMechanism`. Either can be created from a string:
 
