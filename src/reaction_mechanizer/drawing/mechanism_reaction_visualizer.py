@@ -7,6 +7,7 @@ from reaction_mechanizer.pathway.reaction import DifferentialEquationModel, Reac
 from scipy.integrate import odeint
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 import seaborn as sns
 import pandas as pd
 
@@ -138,7 +139,45 @@ class ReactionVisualizer:
             _, top = ax.get_ylim()
             ax.set_ylim([0, top*1.05])
             plt.savefig(str(out), bbox_inches="tight", dpi=600)
-        return pd.DataFrame({thing: data[:, i] for i, thing in enumerate(initial_state.keys())})
+        return pd.DataFrame({"Time": times, **{thing: data[:, i] for i, thing in enumerate(initial_state.keys())}})
+
+    def animate_progress_reaction(self, video_destination_no_extension: str, video_length: float, fps: int, **progress_reaction_args):
+        """Generate video visualization for reaction
+
+        Args:
+            video_length (float): The length of the resulting video
+            fps (int): The fps of the video
+        """
+        df = self.progress_reaction(**progress_reaction_args)
+        writer = animation.writers["ffmpeg"](fps=fps, metadata={"artist": "ReactionMechanizer"}, bitrate=1800)  # Non-python dependency!
+        _, dummy_ax = plt.subplots()
+        plt.tight_layout()
+        df2 = df.drop("Time", axis="columns").stack().reset_index()  # level_1: species, 0: concentration values
+        df2 = df2.rename({"level_1": "Species", 0: "Concentration"}, axis="columns")
+        df2["Time"] = [cur_time for cur_time in df["Time"] for _ in df2["Species"].unique()]
+        sns.lineplot(x="Time", y="Concentration", data=df2, hue="Species", ax=dummy_ax)
+        _, top_y = dummy_ax.get_ylim()
+        _, top_x = dummy_ax.get_xlim()
+
+        new_fig, new_ax = plt.subplots()
+
+        data_1_item = df2.iloc[:len(df2["Species"].unique())]
+        cur_data: Dict[str, Dict[str, List[float]]] = \
+            {spec: {"x": [data_1_item["Time"].iloc[0]], "y": [data_1_item["Concentration"].iloc[i]]}
+             for i, spec in enumerate(df2["Species"].unique())}
+        sns.lineplot(x="Time", y="Concentration", data=data_1_item, hue="Species", ax=new_ax)
+        new_ax.set_ylim([0, top_y*1.05])
+        new_ax.set_xlim([0, top_x*1.05])
+        new_ax.margins(x=0, y=0)
+        sns.despine(ax=new_ax)
+
+        def animate(frame_index):
+            for i, spec in enumerate(df2["Species"].unique()):
+                cur_data[spec]["x"].append(df["Time"].iloc[int(frame_index/(video_length*fps)*df.shape[0])])
+                cur_data[spec]["y"].append(df[spec].iloc[int(frame_index/(video_length*fps)*df.shape[0])])
+                new_ax.get_lines()[i].set_data(cur_data[spec]["x"], cur_data[spec]["y"])
+        ani = animation.FuncAnimation(new_fig, animate, frames=video_length*fps, repeat=True)
+        ani.save(f"{video_destination_no_extension}.mp4", writer=writer)
 
 
 def _get_simple_step_ode_function(differential_equations: Dict[str, DifferentialEquationModel], state_order: List[str]):
