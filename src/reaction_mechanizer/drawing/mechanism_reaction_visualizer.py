@@ -146,12 +146,14 @@ class ReactionVisualizer:
             plt.savefig(str(out), bbox_inches="tight", dpi=600)
         return pd.DataFrame({"Time": times, **{thing: data[:, i] for i, thing in enumerate(initial_state.keys())}})
 
-    def animate_progress_reaction(self, video_destination_no_extension: str, video_length: float, fps: int, **progress_reaction_args):
+    def animate_progress_reaction(self, video_destination_no_extension: str, video_length: float, fps: int, extension: str = "mp4", **progress_reaction_args):
         """Generate video visualization for reaction
 
         Args:
+            video_destination_no_extension (str): The path to store the video at
             video_length (float): The length of the resulting video
             fps (int): The fps of the video
+            extension (str, optional): The extensions of the video [example values: "mp4", "gif", "mov", etc]. Defaults to "mp4".
         """
         df = self.progress_reaction(**progress_reaction_args)
         if not progress_reaction_args.get("show_intermediates", True) and type(self.reaction) == ReactionMechanism:
@@ -184,7 +186,7 @@ class ReactionVisualizer:
                 cur_data[spec]["y"].append(df[spec].iloc[int(frame_index/(video_length*fps)*df.shape[0])])
                 new_ax.get_lines()[i].set_data(cur_data[spec]["x"], cur_data[spec]["y"])
         ani = animation.FuncAnimation(new_fig, animate, frames=video_length*fps, repeat=True)
-        ani.save(f"{video_destination_no_extension}.mp4", writer=writer)
+        ani.save(f"{video_destination_no_extension}.{extension}", writer=writer)
 
 
 def _get_simple_step_ode_function(differential_equations: Dict[str, DifferentialEquationModel], state_order: List[str]):
