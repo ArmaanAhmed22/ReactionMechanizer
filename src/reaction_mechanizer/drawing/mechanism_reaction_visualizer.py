@@ -75,7 +75,8 @@ class ReactionVisualizer:
                           time_end: float,
                           number_steps: int,
                           events: Union[List[Tuple[float, ReactionEvent, Tuple[Any]]], None] = None,
-                          out: Union[str, None] = None) -> pd.DataFrame:
+                          out: Union[str, None] = None,
+                          show_intermediates: bool = True) -> pd.DataFrame:
         """Generate model for reaction
 
         Args:
@@ -128,11 +129,15 @@ class ReactionVisualizer:
             data = self.get_states(initial_state, time_end, number_steps)
         times = np.linspace(0, time_end, number_steps)
 
-        fig, ax = plt.subplots()
+        _, ax = plt.subplots()
         plt.tight_layout()
         if out:
+            dont_show: List[str] = []
+            if not show_intermediates and type(self.reaction) == ReactionMechanism:
+                dont_show.extend(self.reaction.get_intermediates())
             for i, thing in enumerate(initial_state.keys()):
-                sns.lineplot(x=times, y=data[:, i], label="$"+thing+"$", ax=ax)
+                if thing not in dont_show:
+                    sns.lineplot(x=times, y=data[:, i], label="$"+thing+"$", ax=ax)
             ax.legend()
             sns.despine(ax=ax)
             ax.margins(x=0, y=0)
@@ -149,6 +154,8 @@ class ReactionVisualizer:
             fps (int): The fps of the video
         """
         df = self.progress_reaction(**progress_reaction_args)
+        if not progress_reaction_args.get("show_intermediates", True) and type(self.reaction) == ReactionMechanism:
+            df = df.drop(self.reaction.get_intermediates(), axis="columns")
         writer = animation.writers["ffmpeg"](fps=fps, metadata={"artist": "ReactionMechanizer"}, bitrate=1800)  # Non-python dependency!
         _, dummy_ax = plt.subplots()
         plt.tight_layout()
