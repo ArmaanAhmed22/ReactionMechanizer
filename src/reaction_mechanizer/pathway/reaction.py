@@ -249,6 +249,16 @@ class ReactionMechanism:
             out_ode[key] = DifferentialEquationModel.sum_differential_equations(out_ode_prev[key])
         return out_ode
 
+    def get_intermediates(self):
+        epsilon = 0.0001
+        net_species: Dict[str, float] = {}
+        for step in self.steps:
+            for spec, coef in step.reactants.items():
+                net_species[spec] = net_species.get(spec, 0) + coef
+            for spec, coef in step.products.items():
+                net_species[spec] = net_species.get(spec, 0) - coef
+        return [spec for spec, number in net_species.items() if abs(number) < epsilon]
+
     def __str__(self) -> str:
         return "\n".join([str(step) for step in self.steps])
 
