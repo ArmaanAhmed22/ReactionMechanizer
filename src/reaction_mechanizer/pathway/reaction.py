@@ -92,7 +92,7 @@ class SimpleStep:
         """Get system of first order differential equations model for the progression of this step.
 
         Returns:
-            Dict[str, DifferentialEquationModel]: \
+            Dict[str, DifferentialEquationModel]:
                 Get dictionary consisting of all the species in this step as keys and all the corresponding differential equation models as values.
         """
         arguments: str = ",".join(self.reactants.keys())
@@ -154,7 +154,7 @@ class SimpleStep:
 
         Args:
             K (float): The K-value
-            normalizing_kr (int, optional): _description_. Defaults to 1.
+            normalizing_kr (int, optional): What kr to use. Defaults to 1.
         """
         self.kr = normalizing_kr
         self.kf = self.kr * K

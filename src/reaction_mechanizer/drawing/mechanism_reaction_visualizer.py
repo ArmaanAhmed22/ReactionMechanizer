@@ -49,11 +49,11 @@ class ReactionVisualizer:
             time_end (float): The end time for this model
             number_steps (int): The granularity of this model. The higher the number of steps, the more accurate the model.
             initial_time (float, optional): The time to start the model at. Defaults to 0.
-            ode_override (Union[Dict[str, DifferentialEquationModel], None], optional): \
+            ode_override (Union[Dict[str, DifferentialEquationModel], None], optional):
                 Dictionary containing the species to override the differential equation of using the provided one. Defaults to None.
 
         Returns:
-            Any: 2D array where the rows represent the concentrations of the species at different times \
+            Any: 2D array where the rows represent the concentrations of the species at different times
                 (between `initial_time` and `end_time` and using `number_steps`). The columns are the species in the order given by `initial_state`
         """
         ode_dict: Dict[str, DifferentialEquationModel] = self.reaction.get_differential_equations()
@@ -83,13 +83,14 @@ class ReactionVisualizer:
             initial_state (Dict[str, float]): initial concentration of all species in reaction
             time_end (float): The end time for this model
             number_steps (int): The granularity of this model. The higher the number of steps, the more accurate the model.
-            events (Union[List[Tuple[float, ReactionEvent, Tuple[Any]]], None], optional): \
+            events (Union[List[Tuple[float, ReactionEvent, Tuple[Any]]], None], optional):
                 The list of events to occur during a specified time in the reaction. \
                     A single event is represented by a tuple holding the time of the perturbation, the type of perturbation (`ReactionEvent`), \
                         and the additional information associated with the `ReactionEvent` selected. Defaults to None.
-            out (Union[str, None], optional): \
+            out (Union[str, None], optional):
                 If a string is added, a png visually representing the reaction is created at the specified location (and a `DataFrame` is returned). \
                     Otherwise, just the `DataFrame` is returned. Defaults to None.
+            show_intermediates (bool, optional): Whether to show the intermediate species in the graph (doesn't affect dataframe or `SimpleStep`s).
 
         Returns:
             pd.DataFrame: DataFrame representing the concentrations of the species in the reaction
