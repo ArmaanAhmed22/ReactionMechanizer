@@ -62,3 +62,22 @@ def test_differential_equations_step(rate_of: str, k_values: tuple, coordinates:
 ])
 def test_str_simple_step(simple_step: SimpleStep, expected: str):
     assert str(simple_step) == expected
+
+
+@pytest.mark.parametrize("reaction_mechanism, expected_intermediates", [
+    (
+        ReactionMechanism.str_to_mechanism(
+            """A+B->2C
+            C->D
+            D+C->J"""),
+        ["C", "D"]
+    ),
+    (
+        ReactionMechanism.str_to_mechanism(
+            """2A+B->C
+            """),
+        []
+    )
+])
+def test_intermediates(reaction_mechanism: ReactionMechanism, expected_intermediates: List[str]):
+    assert set(reaction_mechanism.get_intermediates()) == set(expected_intermediates)

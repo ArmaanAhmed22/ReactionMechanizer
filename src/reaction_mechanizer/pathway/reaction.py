@@ -92,7 +92,7 @@ class SimpleStep:
         """Get system of first order differential equations model for the progression of this step.
 
         Returns:
-            Dict[str, DifferentialEquationModel]: \
+            Dict[str, DifferentialEquationModel]:
                 Get dictionary consisting of all the species in this step as keys and all the corresponding differential equation models as values.
         """
         arguments: str = ",".join(self.reactants.keys())
@@ -154,7 +154,7 @@ class SimpleStep:
 
         Args:
             K (float): The K-value
-            normalizing_kr (int, optional): _description_. Defaults to 1.
+            normalizing_kr (int, optional): What kr to use. Defaults to 1.
         """
         self.kr = normalizing_kr
         self.kf = self.kr * K
@@ -248,6 +248,16 @@ class ReactionMechanism:
         for key in out_ode_prev.keys():
             out_ode[key] = DifferentialEquationModel.sum_differential_equations(out_ode_prev[key])
         return out_ode
+
+    def get_intermediates(self):
+        epsilon = 0.0001
+        net_species: Dict[str, float] = {}
+        for step in self.steps:
+            for spec, coef in step.reactants.items():
+                net_species[spec] = net_species.get(spec, 0) + coef
+            for spec, coef in step.products.items():
+                net_species[spec] = net_species.get(spec, 0) - coef
+        return [spec for spec, number in net_species.items() if abs(number) < epsilon]
 
     def __str__(self) -> str:
         return "\n".join([str(step) for step in self.steps])

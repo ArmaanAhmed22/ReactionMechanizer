@@ -7,6 +7,7 @@ from reaction_mechanizer.pathway.reaction import DifferentialEquationModel, Reac
 from scipy.integrate import odeint
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 import seaborn as sns
 import pandas as pd
 
@@ -48,11 +49,11 @@ class ReactionVisualizer:
             time_end (float): The end time for this model
             number_steps (int): The granularity of this model. The higher the number of steps, the more accurate the model.
             initial_time (float, optional): The time to start the model at. Defaults to 0.
-            ode_override (Union[Dict[str, DifferentialEquationModel], None], optional): \
+            ode_override (Union[Dict[str, DifferentialEquationModel], None], optional):
                 Dictionary containing the species to override the differential equation of using the provided one. Defaults to None.
 
         Returns:
-            Any: 2D array where the rows represent the concentrations of the species at different times \
+            Any: 2D array where the rows represent the concentrations of the species at different times
                 (between `initial_time` and `end_time` and using `number_steps`). The columns are the species in the order given by `initial_state`
         """
         ode_dict: Dict[str, DifferentialEquationModel] = self.reaction.get_differential_equations()
@@ -74,20 +75,22 @@ class ReactionVisualizer:
                           time_end: float,
                           number_steps: int,
                           events: Union[List[Tuple[float, ReactionEvent, Tuple[Any]]], None] = None,
-                          out: Union[str, None] = None) -> pd.DataFrame:
+                          out: Union[str, None] = None,
+                          show_intermediates: bool = True) -> pd.DataFrame:
         """Generate model for reaction
 
         Args:
             initial_state (Dict[str, float]): initial concentration of all species in reaction
             time_end (float): The end time for this model
             number_steps (int): The granularity of this model. The higher the number of steps, the more accurate the model.
-            events (Union[List[Tuple[float, ReactionEvent, Tuple[Any]]], None], optional): \
+            events (Union[List[Tuple[float, ReactionEvent, Tuple[Any]]], None], optional):
                 The list of events to occur during a specified time in the reaction. \
                     A single event is represented by a tuple holding the time of the perturbation, the type of perturbation (`ReactionEvent`), \
                         and the additional information associated with the `ReactionEvent` selected. Defaults to None.
-            out (Union[str, None], optional): \
+            out (Union[str, None], optional):
                 If a string is added, a png visually representing the reaction is created at the specified location (and a `DataFrame` is returned). \
                     Otherwise, just the `DataFrame` is returned. Defaults to None.
+            show_intermediates (bool, optional): Whether to show the intermediate species in the graph (doesn't affect dataframe or `SimpleStep`s).
 
         Returns:
             pd.DataFrame: DataFrame representing the concentrations of the species in the reaction
@@ -127,18 +130,64 @@ class ReactionVisualizer:
             data = self.get_states(initial_state, time_end, number_steps)
         times = np.linspace(0, time_end, number_steps)
 
-        fig, ax = plt.subplots()
+        _, ax = plt.subplots()
         plt.tight_layout()
         if out:
+            dont_show: List[str] = []
+            if not show_intermediates and type(self.reaction) == ReactionMechanism:
+                dont_show.extend(self.reaction.get_intermediates())
             for i, thing in enumerate(initial_state.keys()):
-                sns.lineplot(x=times, y=data[:, i], label="$"+thing+"$", ax=ax)
+                if thing not in dont_show:
+                    sns.lineplot(x=times, y=data[:, i], label="$"+thing+"$", ax=ax)
             ax.legend()
             sns.despine(ax=ax)
             ax.margins(x=0, y=0)
             _, top = ax.get_ylim()
             ax.set_ylim([0, top*1.05])
             plt.savefig(str(out), bbox_inches="tight", dpi=600)
-        return pd.DataFrame({thing: data[:, i] for i, thing in enumerate(initial_state.keys())})
+        return pd.DataFrame({"Time": times, **{thing: data[:, i] for i, thing in enumerate(initial_state.keys())}})
+
+    def animate_progress_reaction(self, video_destination_no_extension: str, video_length: float, fps: int, extension: str = "mp4", **progress_reaction_args):
+        """Generate video visualization for reaction
+
+        Args:
+            video_destination_no_extension (str): The path to store the video at
+            video_length (float): The length of the resulting video
+            fps (int): The fps of the video
+            extension (str, optional): The extensions of the video [example values: "mp4", "gif", "mov", etc]. Defaults to "mp4".
+        """
+        df = self.progress_reaction(**progress_reaction_args)
+        if not progress_reaction_args.get("show_intermediates", True) and type(self.reaction) == ReactionMechanism:
+            df = df.drop(self.reaction.get_intermediates(), axis="columns")
+        writer = animation.writers["ffmpeg"](fps=fps, metadata={"artist": "ReactionMechanizer"}, bitrate=1800)  # Non-python dependency!
+        _, dummy_ax = plt.subplots()
+        plt.tight_layout()
+        df2 = df.drop("Time", axis="columns").stack().reset_index()  # level_1: species, 0: concentration values
+        df2 = df2.rename({"level_1": "Species", 0: "Concentration"}, axis="columns")
+        df2["Time"] = [cur_time for cur_time in df["Time"] for _ in df2["Species"].unique()]
+        sns.lineplot(x="Time", y="Concentration", data=df2, hue="Species", ax=dummy_ax)
+        _, top_y = dummy_ax.get_ylim()
+        _, top_x = dummy_ax.get_xlim()
+
+        new_fig, new_ax = plt.subplots()
+
+        data_1_item = df2.iloc[:len(df2["Species"].unique())]
+        cur_data: Dict[str, Dict[str, List[float]]] = \
+            {spec: {"x": [data_1_item["Time"].iloc[0]], "y": [data_1_item["Concentration"].iloc[i]]}
+             for i, spec in enumerate(df2["Species"].unique())}
+        sns.lineplot(x="Time", y="Concentration", data=data_1_item, hue="Species", ax=new_ax)
+        new_ax.set_ylim([0, top_y*1.05])
+        new_ax.set_xlim([0, top_x*1.05])
+        new_ax.margins(x=0, y=0)
+        sns.despine(ax=new_ax)
+
+        def animate(frame_index):
+            for i, spec in enumerate(df2["Species"].unique()):
+                cur_data[spec]["x"].append(df["Time"].iloc[int(frame_index/(video_length*fps)*df.shape[0])])
+                cur_data[spec]["y"].append(df[spec].iloc[int(frame_index/(video_length*fps)*df.shape[0])])
+                new_ax.get_lines()[i].set_data(cur_data[spec]["x"], cur_data[spec]["y"])
+        ani = animation.FuncAnimation(new_fig, animate, frames=video_length*fps, repeat=True)
+        ani.save(f"{video_destination_no_extension}.{extension}", writer=writer)
 
 
 def _get_simple_step_ode_function(differential_equations: Dict[str, DifferentialEquationModel], state_order: List[str]):
