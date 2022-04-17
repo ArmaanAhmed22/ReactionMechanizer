@@ -1,4 +1,4 @@
-![logo](readme_assets/reaction_mechanizer_logo.png)
+![logo](https://raw.githubusercontent.com/ArmaanAhmed22/ReactionMechanizer/master/readme_assets/reaction_mechanizer_logo.png)
 
 ---
 # Reaction Mechanizer
@@ -83,7 +83,7 @@ dataframe = vis.progress_reaction(out = "out.png", **progress_reaction_params)
 ```
 
 The following graph is generated:
-![graph](readme_assets/readme_graph_1.png)
+![graph](https://raw.githubusercontent.com/ArmaanAhmed22/ReactionMechanizer/master/readme_assets/readme_graph_1.png)
 Even a video output can be generated:
 
 ```python
@@ -96,4 +96,4 @@ vis.animate_progress_reaction(
 ```
 
 And, the following `gif` is generated!
-![gif](readme_assets/readme_graph_2.gif)
+![gif](https://raw.githubusercontent.com/ArmaanAhmed22/ReactionMechanizer/master/readme_assets/readme_graph_2.gif)
