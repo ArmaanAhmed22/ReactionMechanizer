@@ -68,3 +68,41 @@ def test_mechanism(
     vis = ReactionVisualizer(mechanism)
     df = vis.progress_reaction(initial_condition, end_time, granularity)
     assert abs(df.iloc[-1][species_of_importance] - expected_concentration) <= epsilon
+
+
+@pytest.mark.parametrize("k_values_list, mechanism, initial_condition, species_of_importance, expected_concentration", [
+    (
+        [{"kf": 1, "kr": 0.05}, {"kf": 0.2}],
+        ReactionMechanism.str_to_mechanism("""S+E->C
+                                           C->E+P"""),
+        {"S": 2, "E": 1, "C": 0, "P": 0},
+        "S",
+        0
+     ),
+    (
+        [{"kf": 1, "kr": 0.05}, {"kf": 0.2}],
+        ReactionMechanism.str_to_mechanism("""S+E->C
+                                           C->E+P"""),
+        {"S": 2, "E": 1, "C": 0, "P": 0},
+        "P",
+        2
+     ),
+    (
+        [{"kf": 1, "kr": 0.05}, {"kf": 0.2}],
+        ReactionMechanism.str_to_mechanism("""S+E->C
+                                           C->E+P"""),
+        {"S": 2, "E": 1, "C": 0.5, "P": 0},
+        "P",
+        2.5
+     ),
+])
+def test_mechanism_robust(
+        k_values_list: List[Dict[str, float]],
+        mechanism: ReactionMechanism,
+        initial_condition: Dict[str, float],
+        species_of_importance: str,
+        expected_concentration):
+    mechanism.set_rate_constants(k_values_list)
+    vis = ReactionVisualizer(mechanism)
+    df = vis.progress_reaction_robust(initial_condition, end_time, method="Radau")
+    assert abs(df.iloc[-1][species_of_importance] - expected_concentration) <= epsilon

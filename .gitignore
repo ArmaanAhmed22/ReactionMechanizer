@@ -1,0 +1,9 @@
+.mypy_cache/
+.pytest_cache/
+.tox/
+.coverage
+**/__pycache__
+
+**/*.egg-info
+**/.DS_Store
+.python-version
