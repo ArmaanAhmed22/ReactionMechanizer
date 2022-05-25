@@ -4,7 +4,7 @@ from enum import Enum
 from typing import Any, Dict, List, Tuple, Union
 import typing
 from reaction_mechanizer.pathway.reaction import DifferentialEquationModel, ReactionMechanism, SimpleStep
-from scipy.integrate import odeint
+from scipy.integrate import odeint, solve_ivp
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
@@ -147,7 +147,117 @@ class ReactionVisualizer:
             plt.savefig(str(out), bbox_inches="tight", dpi=600)
         return pd.DataFrame({"Time": times, **{thing: data[:, i] for i, thing in enumerate(initial_state.keys())}})
 
-    def animate_progress_reaction(self, video_destination_no_extension: str, video_length: float, fps: int, extension: str = "mp4", **progress_reaction_args):
+    def get_states_robust(self,
+                          initial_state: Dict[str, float],
+                          time_end: float,
+                          initial_time: float = 0,
+                          ode_override: Union[Dict[str, DifferentialEquationModel], None] = None,
+                          **kwargs_solve_ivp) -> Any:
+        """Get concentration of the species in this reaction, with model specifications given.
+        "get_states_robust" uses the more diverse solve_ivp numerical solver rather than odeint in "get_states"
+
+        Args:
+            initial_state (Dict[str, float]): initial concentration of all species in reaction
+            time_end (float): The end time for this model
+            number_steps (int): The granularity of this model. The higher the number of steps, the more accurate the model.
+            initial_time (float, optional): The time to start the model at. Defaults to 0.
+            ode_override (Union[Dict[str, DifferentialEquationModel], None], optional):
+                Dictionary containing the species to override the differential equation of using the provided one. Defaults to None.
+
+        Returns:
+            Any: 2D array where the rows represent the concentrations of the species at different times
+                (between `initial_time` and `end_time` and using `number_steps`). The columns are the species in the order given by `initial_state`
+        """
+        ode_dict: Dict[str, DifferentialEquationModel] = self.reaction.get_differential_equations()
+        ode_dict_temp = {key: ode_dict[key] for key in initial_state.keys()}
+        ode_dict = ode_dict_temp
+        if ode_override is not None:
+            for key, ode in ode_override.items():
+                ode_dict[key] = ode
+        ode_function = _get_simple_step_ode_function(ode_dict, list(initial_state.keys()), inverse_cur_state_and_t=True)
+
+        cur_state = list(initial_state.values())
+        return solve_ivp(ode_function, (initial_time, time_end), cur_state, **kwargs_solve_ivp)
+
+    def progress_reaction_robust(self,
+                                 initial_state: Dict[str, float],
+                                 time_end: float,
+                                 events: Union[List[Tuple[float, ReactionEvent, Tuple[Any]]], None] = None,
+                                 out: Union[str, None] = None,
+                                 show_intermediates: bool = True,
+                                 **kwargs_solve_ivp) -> pd.DataFrame:
+        """Generate model for reaction
+
+        Args:
+            initial_state (Dict[str, float]): initial concentration of all species in reaction
+            time_end (float): The end time for this model
+            number_steps (int): The granularity of this model. The higher the number of steps, the more accurate the model.
+            events (Union[List[Tuple[float, ReactionEvent, Tuple[Any]]], None], optional):
+                The list of events to occur during a specified time in the reaction. \
+                    A single event is represented by a tuple holding the time of the perturbation, the type of perturbation (`ReactionEvent`), \
+                        and the additional information associated with the `ReactionEvent` selected. Defaults to None.
+            out (Union[str, None], optional):
+                If a string is added, a png visually representing the reaction is created at the specified location (and a `DataFrame` is returned). \
+                    Otherwise, just the `DataFrame` is returned. Defaults to None.
+            show_intermediates (bool, optional): Whether to show the intermediate species in the graph (doesn't affect dataframe or `SimpleStep`s).
+
+        Returns:
+            pd.DataFrame: DataFrame representing the concentrations of the species in the reaction
+        """
+        data: Any = np.ndarray((0, 0))
+        if events is not None:
+            print(events)
+            sorted_events = (*sorted(events, key=lambda x: x[0]), (time_end, None, tuple()))
+            cur_state = dict(initial_state)
+            prev_time_point: float = 0
+
+            for time_point, reaction_event_type, additional_info in sorted_events:
+
+                cur_data = self.get_states_robust(cur_state, time_point, initial_time=prev_time_point, **kwargs_solve_ivp)
+                data = cur_data if len(data) == 0 else typing.cast(Any, np.concatenate([data, cur_data]))
+
+                if reaction_event_type == ReactionEvent.CHANGE_CONCENTRATION:
+                    for index, key in enumerate(cur_state.keys()):
+                        if key == additional_info[0]:
+                            cur_state[key] = cur_data[-1, index] + additional_info[1]
+                        else:
+                            cur_state[key] = cur_data[-1, index]
+                elif reaction_event_type == ReactionEvent.SET_CONCENTRATION:
+                    for index, key in enumerate(cur_state.keys()):
+                        if key == additional_info[0]:
+                            cur_state[key] = cur_data[-1, index] + additional_info[1]
+                        else:
+                            cur_state[key] = cur_data[-1, index]
+                elif reaction_event_type == ReactionEvent.SMOOTH_CHANGE_CONCENTRATION:
+                    pass
+                prev_time_point = time_point
+        else:
+            data = self.get_states_robust(initial_state, time_end, **kwargs_solve_ivp)
+
+        _, ax = plt.subplots()
+        plt.tight_layout()
+        if out:
+            dont_show: List[str] = []
+            if not show_intermediates and type(self.reaction) == ReactionMechanism:
+                dont_show.extend(self.reaction.get_intermediates())
+            for i, thing in enumerate(initial_state.keys()):
+                if thing not in dont_show:
+                    sns.lineplot(x=data.t, y=data.y[i, :], label="$"+thing+"$", ax=ax)
+            ax.legend()
+            sns.despine(ax=ax)
+            ax.margins(x=0, y=0)
+            _, top = ax.get_ylim()
+            ax.set_ylim([0, top*1.05])
+            plt.savefig(str(out), bbox_inches="tight", dpi=600)
+        return pd.DataFrame({"Time": data.t, **{thing: data.y[i, :] for i, thing in enumerate(initial_state.keys())}})
+
+    def animate_progress_reaction(self,
+                                  video_destination_no_extension: str,
+                                  video_length: float,
+                                  fps: int,
+                                  extension: str = "mp4",
+                                  uses_robust: bool = False,
+                                  **progress_reaction_args):
         """Generate video visualization for reaction
 
         Args:
@@ -155,8 +265,9 @@ class ReactionVisualizer:
             video_length (float): The length of the resulting video
             fps (int): The fps of the video
             extension (str, optional): The extensions of the video [example values: "mp4", "gif", "mov", etc]. Defaults to "mp4".
+            uses_robust (bool, optional): Whether or not to use "self.progress_reaction" or "self.progress_reaction_robust"
         """
-        df = self.progress_reaction(**progress_reaction_args)
+        df = self.progress_reaction(**progress_reaction_args) if not uses_robust else self.progress_reaction_robust(**progress_reaction_args)
         if not progress_reaction_args.get("show_intermediates", True) and type(self.reaction) == ReactionMechanism:
             df = df.drop(self.reaction.get_intermediates(), axis="columns")
         writer = animation.writers["ffmpeg"](fps=fps, metadata={"artist": "ReactionMechanizer"}, bitrate=1800)  # Non-python dependency!
@@ -190,7 +301,7 @@ class ReactionVisualizer:
         ani.save(f"{video_destination_no_extension}.{extension}", writer=writer)
 
 
-def _get_simple_step_ode_function(differential_equations: Dict[str, DifferentialEquationModel], state_order: List[str]):
+def _get_simple_step_ode_function(differential_equations: Dict[str, DifferentialEquationModel], state_order: List[str], inverse_cur_state_and_t: bool = False):
     active_odes = {key: val.get_lambda() for key, val in differential_equations.items()}
 
     def simple_step_ode_function(cur_state, t):
@@ -200,4 +311,12 @@ def _get_simple_step_ode_function(differential_equations: Dict[str, Differential
         for _, ode in active_odes.items():
             out.append(ode(**dict_state))
         return out
-    return simple_step_ode_function
+
+    def simple_step_ode_function_params_inversed(t, cur_state):
+        cur_state_order = state_order
+        dict_state = {thing: val for thing, val in zip(cur_state_order, cur_state)}
+        out = []
+        for _, ode in active_odes.items():
+            out.append(ode(**dict_state))
+        return out
+    return simple_step_ode_function if not inverse_cur_state_and_t else simple_step_ode_function_params_inversed
