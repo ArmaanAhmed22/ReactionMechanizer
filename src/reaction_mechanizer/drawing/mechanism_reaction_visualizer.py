@@ -13,11 +13,14 @@ import pandas as pd
 
 
 class ReactionEvent(Enum):
-    """Enum for the possible reaction events, such as:\n
+    """Enum for the possible reaction events, such as:
+
     CHANGE_CONCENTRATION: how much the concentration of the species should be changed by.
         Additional Info: Tuple(str: species of interest, float: change in concentration)
+
     SET_CONCENTRATION: what to set the concentration of the species to.
         Additional Info: Tuple(str: species of interest, float: new concentration)
+
     SMOOTH_CHANGE_CONCENTRATION: TBD
     """
     CHANGE_CONCENTRATION = 0
@@ -83,7 +86,7 @@ class ReactionVisualizer:
             initial_state (Dict[str, float]): initial concentration of all species in reaction
             time_end (float): The end time for this model
             number_steps (int): The granularity of this model. The higher the number of steps, the more accurate the model.
-            events (Union[List[Tuple[float, ReactionEvent, Tuple[Any]]], None], optional):
+            events (List[Tuple[float, ReactionEvent, Tuple[Any]]], optional):
                 The list of events to occur during a specified time in the reaction. \
                     A single event is represented by a tuple holding the time of the perturbation, the type of perturbation (`ReactionEvent`), \
                         and the additional information associated with the `ReactionEvent` selected. Defaults to None.
