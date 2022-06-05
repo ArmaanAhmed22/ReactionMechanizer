@@ -101,25 +101,16 @@ class SimpleStep:
             arguments += ","+",".join(products)
         reactant_multiplication: str = "*".join([f"""kwargs["{thing}"]**{coef}""" for thing, coef in self.reactants.items()])
         product_multiplication: str = "*".join([f"""kwargs["{thing}"]**{coef}""" for thing, coef in self.products.items()])
-
-        out = {}
-        out_raw_str = {}
         out_ode = {}
 
         for thing, coef in self.reactants.items():
-            out_raw_str[thing] = f"lambda **kwargs: -{coef}*{self.kf}*{reactant_multiplication} + {coef}*{self.kr}*{product_multiplication}"
             out_ode[thing] = DifferentialEquationModel(f"-{coef}*{self.kf}*{reactant_multiplication} + {coef}*{self.kr}*{product_multiplication}")
         for thing, coef in self.products.items():
-            if thing in out_raw_str:
-                new_lambda_str = f'lambda **kwargs: {coef}*{self.kf}*{reactant_multiplication} - {self.kr}*{coef}*{product_multiplication}'
-                out_raw_str[thing] = f"lambda **kwargs: ({out_raw_str[thing]})(**kwargs) + ({new_lambda_str})(**kwargs)"
+            if thing in out_ode:
                 new_ode = DifferentialEquationModel(f"{coef}*{self.kf}*{reactant_multiplication} - {self.kr}*{coef}*{product_multiplication}")
                 out_ode[thing] = DifferentialEquationModel.sum_differential_equations([out_ode[thing], new_ode])
             else:
-                out_raw_str[thing] = f"lambda **kwargs: {coef}*{self.kf}*{reactant_multiplication} - {self.kr}*{coef}*{product_multiplication}"
                 out_ode[thing] = DifferentialEquationModel(f"{coef}*{self.kf}*{reactant_multiplication} - {self.kr}*{coef}*{product_multiplication}")
-        for thing, raw_func in out_raw_str.items():
-            out[thing] = (eval(raw_func), raw_func)
         return out_ode
 
     def get_differential_equation_of(self, species: str) -> 'DifferentialEquationModel':
